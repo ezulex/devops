@@ -4,7 +4,7 @@ services:
     build:
       dockerfile: Dockerfile.build
     volumes:
-      - build_volume:/wars
+      - build_volume:/app/target/
 
   prod:
     image: tomcat:8.5.82-jdk8-openjdk-slim
