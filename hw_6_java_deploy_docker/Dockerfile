@@ -1,6 +1,6 @@
 FROM maven:3.8.7-openjdk-18-slim AS maven_build
-COPY boxfuse-sample-java-war-hello/ /app/
 WORKDIR /app
+COPY boxfuse-sample-java-war-hello/ ./
 RUN mvn package
 
 FROM tomcat:jdk21-openjdk-slim
