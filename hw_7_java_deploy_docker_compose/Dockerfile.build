@@ -1,0 +1,5 @@
+FROM maven:3.8.6-openjdk-8-slim AS maven_build
+WORKDIR /app
+COPY boxfuse/ ./
+RUN mvn package
+RUN mkdir -p /wars && cp target/*.war /wars/

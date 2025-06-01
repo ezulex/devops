@@ -1,0 +1,20 @@
+---
+services:
+  build:
+    build:
+      dockerfile: Dockerfile.build
+    volumes:
+      - build_volume:/wars
+
+  prod:
+    image: tomcat:8.5.82-jdk8-openjdk-slim
+    ports:
+      - '8080:8080'
+    volumes:
+      - build_volume:/usr/local/tomcat/webapps/
+    depends_on:
+      - build
+    command: "catalina.sh run"
+
+volumes:
+  build_volume:
