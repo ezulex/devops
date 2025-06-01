@@ -1,9 +1,7 @@
 FROM maven:3.8.6-openjdk-8-slim AS maven_build
-RUN ls -la /
-COPY boxfuse-sample-java-war-hello/ /app/
-RUN ls -la /app/
-RUN pwd
 WORKDIR /app
+COPY boxfuse-sample-java-war-hello/pom.xml ./pom.xml
+COPY boxfuse-sample-java-war-hello/src ./src
 RUN ls -la
 RUN pwd
 RUN mvn package
