@@ -29,3 +29,34 @@
         src: "{{ repo_dest }}/target/hello-1.0.war"
         dest: "./artifacts/"
         flat: yes
+
+- name: Deploy to production
+  hosts: prod
+  vars:
+    deploy_dir: /var/lib/tomcat9/webapps
+    war_src: ./artifacts/hello-1.0.war
+    war_dest: "{{ deploy_dir }}/hello-1.0.war"
+  tasks:
+    - name: Ensure Tomcat is installed
+      apt:
+        name: tomcat9
+        state: present
+
+    - name: Ensure Tomcat service is enabled and started
+      systemd:
+        name: tomcat9
+        enabled: yes
+        state: started
+
+    - name: Copy WAR to Tomcat webapps
+      copy:
+        src: "{{ war_src }}"
+        dest: "{{ war_dest }}"
+        owner: tomcat
+        group: tomcat
+        mode: '0644'
+
+    - name: Restart Tomcat
+      systemd:
+        name: "{{ tomcat_service }}"
+        state: restarted
