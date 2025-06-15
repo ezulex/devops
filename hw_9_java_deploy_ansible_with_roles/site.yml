@@ -1,0 +1,10 @@
+---
+- name: Build project
+  hosts: build
+  roles:
+    - role: build
+
+- name: Deploy to production
+  hosts: prod
+  roles:
+    - role: deploy
