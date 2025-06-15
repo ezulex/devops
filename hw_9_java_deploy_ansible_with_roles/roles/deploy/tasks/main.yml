@@ -1,3 +1,25 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# tasks file for roles/deploy
+- name: Ensure Tomcat is installed
+  apt:
+    name: tomcat9
+    state: present
+
+- name: Ensure Tomcat service is enabled and started
+  systemd:
+    name: tomcat9
+    enabled: yes
+    state: started
+
+- name: Copy WAR to Tomcat webapps
+  copy:
+    src: "{{ playbook_dir }}/artifacts/{{ war_src }}"
+    dest: "{{ war_dest }}"
+    owner: tomcat
+    group: tomcat
+    mode: '0644'
+
+- name: Restart Tomcat
+  systemd:
+    name: tomcat9
+    state: restarted

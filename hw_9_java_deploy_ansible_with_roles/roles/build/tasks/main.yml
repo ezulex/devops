@@ -1,3 +1,26 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# tasks file for roles/build
+- name: Ensure git and maven are installed
+  apt:
+    name:
+      - git
+      - maven
+    state: present
+
+- name: Clone repository
+  git:
+    repo: "{{ repo_url }}"
+    dest: "{{ repo_dest }}"
+    version: master
+    force: yes
+
+- name: Build the WAR with Maven
+  command: mvn package -X
+  args:
+    chdir: "{{ repo_dest }}"
+
+- name: Fetch built WAR to controller
+  fetch:
+    src: "{{ repo_dest }}/target/hello-1.0.war"
+    dest: "{{ playbook_dir }}/artifacts/"
+    flat: yes

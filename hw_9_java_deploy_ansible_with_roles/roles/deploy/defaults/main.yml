@@ -1,3 +1,5 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# defaults file for roles/deploy
+deploy_dir: /var/lib/tomcat9/webapps
+war_src: hello-1.0.war
+war_dest: "{{ deploy_dir }}/hello-1.0.war"

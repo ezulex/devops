@@ -1,3 +1,4 @@
 #SPDX-License-Identifier: MIT-0
 ---
-# defaults file for roles/build
+repo_url: https://github.com/boxfuse/boxfuse-sample-java-war-hello.git
+repo_dest: /opt/hello-war
