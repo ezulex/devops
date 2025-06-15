@@ -26,6 +26,6 @@
 
     - name: Fetch built WAR to controller
       fetch:
-        src: "{{ repo_dest }}/target/hello-world-1.0.war"
+        src: "{{ repo_dest }}/target/hello-1.0.war"
         dest: "./artifacts/"
         flat: yes
