@@ -1,15 +1,31 @@
 ---
 - name: Build project
   hosts: build
-  become: yes
-
+  vars:
+    repo_url: https://github.com/boxfuse/boxfuse-sample-java-war-hello.git
+    repo_dest: /opt/hello-war
   tasks:
-    - name: Install Docker
+    - name: Ensure git and maven are installed
       apt:
-        name: docker.io
+        name:
+          - git
+          - maven
         state: present
 
-    - name: Copy Dockerfile
-      copy:
-        src: Dockerfile.build
-        dest: /home/ubuntu/devops/
+    - name: Clone repository
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+        version: master
+        force: yes
+
+    - name: Build the WAR with Maven
+      command: mvn package -X
+      args:
+        chdir: "{{ repo_dest }}"
+
+    - name: Fetch built WAR to controller
+      fetch:
+        src: "{{ repo_dest }}/target/hello-world-1.0.war"
+        dest: "./artifacts/"
+        flat: yes
