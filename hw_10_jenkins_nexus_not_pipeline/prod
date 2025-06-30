@@ -1,0 +1,12 @@
+CONTAINER_NAME="boxfuse"
+IMAGE_FULL="$Repo_Host/$IMAGE"
+
+echo "$NEXUS_PASS" \
+  | docker login $Repo_Host \
+      -u "$NEXUS_USER" \
+      --password-stdin
+
+docker pull "$Repo_Host/$IMAGE:$TAG"
+docker rm -f $CONTAINER_NAME || true
+docker run -d --name "$CONTAINER_NAME" -p 80:8080 "$Repo_Host/$IMAGE:$TAG"
+
