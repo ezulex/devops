@@ -1,0 +1,90 @@
+pipeline {
+  agent none
+
+  environment {
+    DOCKERHUB_NAMESPACE = 'ezulex'
+    IMAGE_NAME          = 'boxfuse-sample-java'
+    TAG                 = 'v1.0'
+    APP_IMAGE           = "${DOCKERHUB_NAMESPACE}/${IMAGE_NAME}:${TAG}"
+
+    PROD_HOST           = '89.169.181.126'
+    PROD_USER           = 'user'
+  }
+
+  stages {
+    stage('Checkout') {
+      agent any
+      steps {
+        git branch: 'master', url: 'https://github.com/boxfuse/boxfuse-sample-java-war-hello.git'
+      }
+    }
+
+    stage('Build with Maven') {
+      agent {
+        docker {
+          image 'maven:3.8.6-openjdk-8-slim'
+          args  '-u root:root'
+        }
+      }
+      steps {
+        sh 'mvn clean package -DskipTests'
+      }
+      post {
+        success {
+          archiveArtifacts artifacts: 'target/*.war', onlyIfSuccessful: true
+        }
+      }
+    }
+
+    stage('Build & Push Docker Image') {
+      agent {
+        docker {
+          image 'docker:24.0.2'
+          args  '-v /var/run/docker.sock:/var/run/docker.sock --group-add 122'
+        }
+      }
+      environment {
+        DOCKER_CONFIG = "${WORKSPACE}/.docker"
+      }
+      steps {
+        script {
+          sh 'mkdir -p "${DOCKER_CONFIG}"'
+          sh '''cat > Dockerfile.deploy <<EOF
+FROM tomcat:8.5-jre8-slim
+COPY target/*.war /usr/local/tomcat/webapps/testpage.war
+EXPOSE 8080
+CMD ["catalina.sh", "run"]
+EOF'''
+
+          def img = docker.build(APP_IMAGE, '-f Dockerfile.deploy .')
+
+          docker.withRegistry('', 'dockerhub-credentials') {
+            img.push()
+          }
+        }
+      }
+    }
+
+    stage('Deploy to PROD') {
+      agent any
+      steps {
+        sshagent(['16b14536-d96a-4158-826e-b500d76500d2']) {
+          sh '''ssh -o StrictHostKeyChecking=no ${PROD_USER}@${PROD_HOST} <<EOF
+              docker pull ${APP_IMAGE}
+              docker rm -f ${IMAGE_NAME} || true
+              docker run -d --name ${IMAGE_NAME} -p 80:8080 ${APP_IMAGE}
+EOF'''
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "Done: ${APP_IMAGE}"
+    }
+    failure {
+      echo 'Error'
+    }
+  }
+}
