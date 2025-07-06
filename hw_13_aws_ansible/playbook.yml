@@ -1,0 +1,138 @@
+---
+- name: Создание build и prod
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  collections:
+    - amazon.aws
+
+  vars:
+    image_id:       ami-0a7d80731ae1b2435
+    instance_type:  t2.micro
+    key_name:       MyKeyPair2
+    security_group: MySecGroup1
+    region:         us-east-1
+    ssh_key_path:   ~/.ssh/MyKeyPair2.pem
+
+  tasks:
+    - name: Запустить build
+      amazon.aws.ec2_instance:
+        name: build
+        key_name:       "{{ key_name }}"
+        image_id:       "{{ image_id }}"
+        instance_type:  "{{ instance_type }}"
+        security_groups:
+          - "{{ security_group }}"
+        region:         "{{ region }}"
+        count:          1
+        wait:           yes
+      register: ec2_build
+
+    - name: Запустить prod
+      amazon.aws.ec2_instance:
+        name: prod
+        key_name:       "{{ key_name }}"
+        image_id:       "{{ image_id }}"
+        instance_type:  "{{ instance_type }}"
+        security_groups:
+          - "{{ security_group }}"
+        region:         "{{ region }}"
+        count:          1
+        wait:           yes
+      register: ec2_prod
+
+    - name: Добавить build в inventory
+      add_host:
+        name: "{{ item.public_ip_address }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+        groups: build
+      loop: "{{ ec2_build.instances }}"
+
+    - name: Добавить prod в inventory
+      add_host:
+        name: "{{ item.public_ip_address }}"
+        ansible_user: ubuntu
+        ansible_ssh_private_key_file: "{{ ssh_key_path }}"
+        groups: prod
+      loop: "{{ ec2_prod.instances }}"
+
+    - name: Ждём SSH на build и prod
+      wait_for:
+        host: "{{ item.public_ip_address }}"
+        port: 22
+        delay: 10
+        timeout: 300
+      loop: "{{ ec2_build.instances + ec2_prod.instances }}"
+
+- name: Сборка WAR на build
+  hosts: build
+  become: yes
+
+  tasks:
+    - name: Установка Java/Git/Maven на build
+      apt:
+        update_cache: yes
+        name:
+          - openjdk-11-jdk
+          - git
+          - maven
+        state: present
+
+    - name: Клонирование проекта на build
+      git:
+        repo: https://github.com/boxfuse/boxfuse-sample-java-war-hello.git
+        dest: /opt/hello
+        version: master
+
+    - name: Сборка WAR на build
+      command: mvn package
+      args:
+        chdir: /opt/hello
+
+    - name: Поиск WAR в target (потому что copy не поддерживает wildcards)
+      find:
+        paths: /opt/hello/target
+        patterns: "*.war"
+      register: war_files
+
+    - name: Копировать артефакт на контроллер
+#    (копируем первый и единственный, в случае если наш проект, то знаем точное имя, здесь для упрощения)
+      fetch:
+        src: "{{ war_files.files[0].path }}"
+        dest: ./artifacts/hello.war
+        flat: yes
+      run_once: yes
+
+- name: Деплой WAR на prod
+  hosts: prod
+  become: yes
+
+  tasks:
+    - name: Установка Java/Tomcat
+      apt:
+        update_cache: yes
+        name:
+          - openjdk-11-jdk
+          - tomcat9
+        state: present
+
+    - name: Запуск Tomcat
+      service:
+        name: tomcat9
+        state: started
+        enabled: yes
+
+    - name: Копировать WAR в Tomcat
+      copy:
+        src: ./artifacts/hello.war
+        dest: /var/lib/tomcat9/webapps/hello.war
+        owner: tomcat
+        group: tomcat
+        mode: '0644'
+
+    - name: Перезапустить Tomcat
+      service:
+        name: tomcat9
+        state: restarted
