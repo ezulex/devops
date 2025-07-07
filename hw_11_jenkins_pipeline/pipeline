@@ -49,15 +49,7 @@ pipeline {
       steps {
         script {
           sh 'mkdir -p "${DOCKER_CONFIG}"'
-          sh '''cat > Dockerfile.deploy <<EOF
-FROM tomcat:8.5-jre8-slim
-COPY target/*.war /usr/local/tomcat/webapps/testpage.war
-EXPOSE 8080
-CMD ["catalina.sh", "run"]
-EOF'''
-
           def img = docker.build(APP_IMAGE, '-f Dockerfile.deploy .')
-
           docker.withRegistry('', 'dockerhub-credentials') {
             img.push()
           }
